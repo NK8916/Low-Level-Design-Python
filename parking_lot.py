@@ -1,213 +1,122 @@
-from abc import ABC, abstractmethod
-from enum import Enum
-# Requirements:-
+import datetime
+import math
 
-# R1: The parking lot should have the capacity to park 40,000 vehicles.
-# R2: The four different types of parking spots are handicapped, compact, large, and motorcycle.
-# R3: The parking lot should have multiple entrance and exit points.
-# R4: Four types of vehicles should be allowed to park in the parking lot, which are as follows:
-    # Car
-    # Truck
-    # Van
-    # Motorcycle
+class Vehicle:
+    def __init__(self,spot_size):
+        self.spot_size = spot_size
+    
+    def getSpotSize(self):
+        return self.spot_size
 
-# R5: The parking lot should have a display board that shows free parking spots for each parking spot type.
-# R6: The system should not allow more vehicles in the parking lot if the maximum capacity (40,000) is reached.
-# R7: If the parking lot is completely occupied, the system should show a message on the entrance and on the parking lot display board.
-# R8: Customers should be able to collect a parking ticket from the entrance and pay at the exit.
-# R9: The customer can pay for the ticket either with an automated exit panel or pay the parking agent at the exit.
-# R10: The payment should be calculated at an hourly rate.
-# R11: Payment can be made using either a credit/debit card or cash.
+class Driver:
+    def __init__(self,id,vehicle):
+        self.vehicle = vehicle
+        self.id = id
+        self.due_amount=0
+    
+    def getVehicle(self):
+        return self.vehicle
 
+    def getId(self):
+        return self.id
 
-class Vehicle(ABC):
-    def __init__(self,license_no) -> None:
-        self.license_no=license_no
-
-    @abstractmethod
-    def assign_ticket(self):
-        pass
+    def charge(self,amount):
+        self.due_amount +=amount
 
 class Car(Vehicle):
+    def __init__(self):
+        super(Car, self).__init__(1)
 
-    def __init__(self, license_no) -> None:
-        super().__init__(license_no)
-
-    def assign_ticket(self,ticket):
-        pass
-
-class Van(Vehicle):
-    def __init__(self, license_no) -> None:
-        super().__init__(license_no)
-
-    def assign_ticket(self,ticket):
-        pass
+class Limo(Vehicle):
+    def __init__(self):
+        super(Limo, self).__init__(2)
 
 class Truck(Vehicle):
-    def __init__(self, license_no) -> None:
-        super().__init__(license_no)
+    def __init__(self):
+        super(Truck, self).__init__(3)
 
-    def assign_ticket(self,ticket):
-        pass
-
-class Motorcycle(Vehicle):
-    def __init__(self, license_no) -> None:
-        super().__init__(license_no)
-
-    def assign_ticket(self,ticket):
-        pass
-
-
-class ParkingSpot(ABC):
-    def __init__(self,id,isFree) -> None:
-        self.id=id
-        self.isFree=isFree
-
-    @abstractmethod
-    def getIsFree(self):
-        pass
-
-class Large(ParkingSpot):
-    def __init__(self, id, isFree) -> None:
-        super().__init__(id, isFree)
+class ParkingFloor:
+    def __init__(self,spot_count):
+        self.spots=[0]*spot_count
+        self.vehicle_map={}
     
-    def getIsFree(self):
-        pass
+    def parkVehicle(self,vehicle):
+        spot_size=vehicle.getSpotSize()
+        l,r=0,0
 
-class Handicapped(ParkingSpot):
-    def __init__(self, id, isFree) -> None:
-        super().__init__(id, isFree)
+        while r<len(self.spots):
+            if self.spots[r]!=0:
+                l=r+1
+            if r-l+1==spot_size:
+
+                for i in range(l,r+1):
+                    self.spots[i]=1
+                self.vehicle_map[vehicle]=[l,r]
+                return True
+            r+=1
+        return False
     
-    def getIsFree(self):
-        pass
-class Motorcycle(ParkingSpot):
-    def __init__(self, id, isFree) -> None:
-        super().__init__(id, isFree)
+    def removeVehicle(self,vehicle):
+        l,r=self.vehicle_map[vehicle]
+
+        for i in range(l,r+1):
+            self.spots[i]=0
+        del self.vehicle_map[vehicle]
     
-    def getIsFree(self):
-        pass
 
-class Compact(ParkingSpot):
-    def __init__(self, id, isFree) -> None:
-        super().__init__(id, isFree)
+    def getParkingSpots(self):
+        return self.spots
+
+    def getVehicleSpots(self,vehicle):
+        return self.vehicle_map[vehicle]
+
+
+class ParkingGarage:
+    def __init__(self,floorCount,spotsPerFloor) -> None:
+        self.parkings=[ParkingFloor(spotsPerFloor) for _ in floorCount]
     
-    def getIsFree(self):
-        pass
+    def parkVehicle(self,vehicle):
 
-class AccountStatus(Enum):
-    blocked="BLOCKED"
-    active="ACTIVE"
-    deleted="DELETED"
-
-class Person:
-    def __init__(self,name,dob,email,phone) -> None:
-        self.name=name
-        self.dob=dob
-        self.email=email
-        self.phone=phone
-class Account(ABC):
-    def __init__(self,username,password) -> None:
-        self.username=username
-        self.password=password
-        self.status=AccountStatus
-
-    @abstractmethod
-    def resetPassword(self):
-        pass
-
-
-class Admin(Account):
-    def __init__(self, username, password) -> None:
-        super().__init__(username, password)
+        for parking in self.parkings:
+            if parking.parkVehicle(vehicle):
+                return True
+        return False
     
-    def addParkingSpot(self):
-        pass
+    def removeVehicle(self,vehicle):
 
-    def updateParkingBoard(self):
-        pass
+        for parking in self.parkings:
+            if parking.getVehicleSpots(vehicle):
+                parking.removeVehicle(vehicle)
+                return True
+        return False
 
-class ParkingAgent(Account):
-    def __init__(self, username, password) -> None:
-        super().__init__(username, password)
+
+class ParkingSystem:
+    def __init__(self,parking_garage,hourly_rate):
+        self.parking_garage=parking_garage
+        self.hourly_rate=hourly_rate
+        self.time_parked={}
     
-    def processTicket(self):
-        pass
+    def parkVehicle(self,driver):
+        vehicle=driver.getVehicle()
+        current_hour=datetime.datetime.now().hour
+        isParked=self.parking_garage.parkVehicle(vehicle)
+        if isParked:
+            self.time_parked[driver.getId()]=current_hour
+        return isParked
 
-
-class ParkingBoard():
-    def __init__(self) -> None:
-        self.parkingMap={}
-    
-    def addParkingSpot(self):
-        pass
-
-    def showFreeParkingSpot(self):
-        pass
-
-class Ticket():
-    def __init__(self,id,amount,timestamp,parkingSpot) -> None:
-        self.id=id
-        self.amount=amount
-        self.timestamp=timestamp
-        self.parkingSpot=parkingSpot
-
-class Entrance():
-    def __init__(self) -> None:
-        self.ticket=Ticket
-    
-    def collectParkingTicket(self):
-        return self.ticket
-
-class Exit():
-    def __init__(self) -> None:
-        pass
-    def validateTicket(self):
-        pass
-
-class PaymentStatus(Enum):
-    SUCCESS="success"
-    FAILED="failed"
-    DECLINED="declined"
-    REFUNDED="refunded"
-class Payment(ABC):
-    def __init__(self,amount,timestamp) -> None:
-        self.amount=amount
-        self.timestamp=timestamp
-        self.status=PaymentStatus
-    
-    @abstractmethod
-    def makePayment(self):
-        pass
+    def removeVehicle(self,driver):
+        current_hour=datetime.datetime.now().hour
+        timeperiod=math.ceil(current_hour-self.time_parked[driver.getId()])
+        driver.charge(timeperiod*self.hourly_rate)
+        del self.time_parked[driver.getId()]
+        return self.parking_garage.remove_vehicle(driver.getVehicle())
+        
 
 
 
-class ParkingRate():
-    def __init__(self,hours,rate) -> None:
-        self.hours=hours
-        self.rate=rate
-    
-    def calculate(self):
-        pass
 
-class Address():
-    def __init__(self,address,zipcode,city,state,country) -> None:
-        self.address=address
-        self.zipcode=zipcode
-        self.city=city
-        self.state=state
-        self.country=country
-class ParkingLot():
-    def __init__(self,id,name,address) -> None:
-        self.id=id
-        self.name=name
-        self.address=Address
-    
-    def addEntrance(self):
-        pass
-    
-    def addExit(self):
-        pass
-    
-    def getParkingTicket(self):
-        pass
-    
+
+
+
+
